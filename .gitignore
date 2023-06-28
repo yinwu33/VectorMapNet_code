@@ -127,3 +127,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+.idea
+v0.17.3.zip
+mmdetection3d-0.17.3
+
+*.png
+*.pth
+
+/work_dirs
+/.vscode
