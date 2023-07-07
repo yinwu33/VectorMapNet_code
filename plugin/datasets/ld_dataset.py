@@ -1,118 +1,97 @@
+import mmcv
+import numpy as np
+
+import tempfile
+import warnings
+from os import path as osp
+
 import os
 import os.path as osp
 import time
 
-import mmcv
-import numpy as np
 from IPython import embed
-from mmdet.datasets import DATASETS
+
+from torch.utils.data import Dataset
+from mmdet3d.datasets.utils import extract_result_dict, get_loading_pipeline
 from mmdet3d.core.points import BasePoints
 
-from .base_dataset import BaseMapDataset
+from mmdet.datasets import DATASETS
+
+from mmdet3d.datasets.pipelines import Compose
+
 from .evaluation.precision_recall.average_precision_gen import eval_chamfer
 
 
 @DATASETS.register_module()
-class NuscDataset(BaseMapDataset):
+class LDDataset(Dataset):
     def __init__(self,
-                 ann_file,
                  data_root,
-                 cat2id,
+                 ann_file,
                  roi_size,
+                 cat2id,
+                 pipeline=None,
+                 eval_cfg: dict = dict(),
+                 interval=1,
+                 coord_dim=3,
+                 work_dir=None,
                  modality=dict(
-                     use_camera=True,
-                     use_lidar=False,
+                     use_camera=False,
+                     use_lidar=True,
                      use_radar=False,
-                     use_map=True,
+                     use_map=False,
                      use_external=False,
                  ),
-                 pipeline=None,
-                 coord_dim=3,
-                 interval=1,
-                 work_dir=None,
-                 eval_cfg: dict = dict(),
                  **kwargs,
                  ):
-        super().__init__(
-            ann_file,
-            modality=modality,
-            pipeline=pipeline,
-            cat2id=cat2id,
-            interval=interval,
-        )
+        super().__init__(        )
+        
+        self.ann_file = ann_file
+        self.modality = modality
+        self.pipeline = Compose(pipeline) if pipeline is not None else None
+        self.cat2id = cat2id
+        self.interval = interval
+        
         self.roi_size = roi_size
         self.coord_dim = coord_dim
         self.eval_cfg = eval_cfg
+        
+        # lidar files
+        lidar_folder_path = osp.join(data_root, 'LIDAR')
+        self.samples = []
+        for file in os.listdir(lidar_folder_path):
+            self.samples.append(osp.join(lidar_folder_path, file))
 
         # dummy flag to fit with mmdet
         self.flag = np.zeros(len(self), dtype=np.uint8)
         # self.map_extractor = NuscMapExtractor(data_root, self.roi_size)
         self.work_dir = work_dir
-
-    def load_annotations(self, ann_file):
-        """Load annotations from ann_file.
-
-        Args:
-            ann_file (str): Path of the annotation file.
-
-        Returns:
-            list[dict]: List of annotations.
-        """
-        print('collecting samples...')
-        start_time = time.time()
-        ann = mmcv.load(ann_file)
-        samples = ann[::self.interval]
-        print(
-            f'collected {len(samples)} samples in {(time.time() - start_time):.2f}s')
-        self.samples = samples
+        
 
     def get_sample(self, idx):
-        '''
-        aaa
-        '''
-
-        sample = self.samples[idx]
-        location = sample['location']
-
-        ego2img_rts = []
-        for c in sample['cams'].values():
-            extrinsic, intrinsic = np.array(
-                c['extrinsics']), np.array(c['intrinsics'])
-            ego2cam_rt = extrinsic
-            viewpad = np.eye(4)
-            viewpad[:intrinsic.shape[0], :intrinsic.shape[1]] = intrinsic
-            ego2cam_rt = (viewpad @ ego2cam_rt)
-            ego2img_rts.append(ego2cam_rt)
-
-        input_dict = {
-            # for nuscenes, the order is
-            # 'CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_FRONT_LEFT',
-            # 'CAM_BACK', 'CAM_BACK_LEFT', 'CAM_BACK_RIGHT'
-            'sample_idx': sample['token'],
-            'location': location,
-            'img_filenames': [c['img_fpath'] for c in sample['cams'].values()],
-            # intrinsics are 3x3 Ks
-            'cam_intrinsics': [c['intrinsics'] for c in sample['cams'].values()],
-            # extrinsics are 4x4 tranform matrix, **ego2cam**
-            'cam_extrinsics': [c['extrinsics'] for c in sample['cams'].values()],
-            'ego2img': ego2img_rts,
-            # 'map_geoms': map_label2geom, # {0: List[ped_crossing(LineString)], 1: ...}
-            'ego2global_translation': sample['e2g_translation'],
-            'ego2global_rotation': sample['e2g_rotation'],
-        }
-
-        if self.modality['use_lidar']:
-            input_dict.update(
-                dict(
-                    pts_filename=sample['lidar_path'],
-                )
-            )
-            
-            points = self._load_points( input_dict["pts_filename"] ).reshape(-1, 4)
-            input_dict["points"] = BasePoints(points, 4)
-            
+        lidar_bin_file = self.samples[idx]
+        
+        points = self._load_points(lidar_bin_file).reshape(-1, 4)
+        
+        input_dict = dict(
+            points = BasePoints(points, 4)
+        )
+        
         return input_dict
 
+    def prepare_data(self, index):
+        """Prepare data for testing.
+
+        Args:
+            index (int): Index for accessing the target data.
+
+        Returns:
+            dict: Testing data dict of the corresponding index.
+        """
+        input_dict = self.get_sample(index)
+        example = self.pipeline(input_dict)
+        return example
+    
+    
     def format_results(self, results, name, prefix=None, patch_size=(60, 30), origin=(0, 0)):
 
         meta = self.modality
@@ -146,12 +125,13 @@ class NuscDataset(BaseMapDataset):
                     'type': case['labels'][i],
                     'confidence_level': case['scores'][i],
                 })
-                submissions['results'][case['token']] = {}
-                submissions['results'][case['token']]['vectors'] = vector_lines
+                # submissions['results'][case['token']] = {}
+                # submissions['results'][case['token']]['vectors'] = vector_lines
+            submissions['results']['vectors'] = vector_lines
 
             if 'groundTruth' in case:
 
-                submissions['groundTruth'][case['token']] = {}
+                # submissions['groundTruth'][case['token']] = {}
                 vector_lines = []
                 for i in range(case['groundTruth']['nline']):
                     line = case['groundTruth']['lines'][i] * \
@@ -163,8 +143,9 @@ class NuscDataset(BaseMapDataset):
                         'type': case['groundTruth']['labels'][i],
                         'confidence_level': 1.,
                     })
-                submissions['groundTruth'][case['token']
-                                           ]['vectors'] = vector_lines
+                # submissions['groundTruth'][case['token']
+                #                            ]['vectors'] = vector_lines
+                submissions['groundTruth']['vectors'] = vector_lines
 
         # Use pickle format to minimize submission file size.
         print('Done!')
@@ -173,6 +154,7 @@ class NuscDataset(BaseMapDataset):
         mmcv.dump(submissions, res_path)
 
         return res_path
+
 
     def evaluate(self,
                  results,
@@ -208,7 +190,25 @@ class NuscDataset(BaseMapDataset):
         print(result_dict)
 
         return result_dict
+    
+    
+    def __len__(self):
+        """Return the length of data infos.
 
+        Returns:
+            int: Length of data infos.
+        """
+        return len(self.samples)
+        
+    def _rand_another(self, idx):
+        """Randomly get another item.
+
+        Returns:
+            int: Another index of item.
+        """
+        return np.random.choice(self.__len__)
+    
+    
     def _load_points(self, pts_filename: str):
         """Private function to load point clouds data.
 
@@ -229,3 +229,13 @@ class NuscDataset(BaseMapDataset):
             else:
                 points = np.fromfile(pts_filename, dtype=np.float32)
         return points
+
+    def __getitem__(self, idx):
+        """Get item from infos according to the given index.
+
+        Returns:
+            dict: Data dictionary of the corresponding index.
+        """
+        data = self.prepare_data(idx)
+
+        return data

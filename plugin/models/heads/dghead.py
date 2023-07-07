@@ -219,7 +219,7 @@ class DGHead(BaseMapHead):
         gen_net_name = self.gen_net.name if hasattr(self.gen_net,'name') else 'gen'
 
         ret_list = []
-        for batch_idx in range(len(tokens)):
+        for batch_idx in range(len(preds['bbox'])):
 
             ret_dict_single = {}
 
@@ -232,7 +232,7 @@ class DGHead(BaseMapHead):
             bbox_res = {
                 'bboxes': preds['bbox'][batch_idx].detach().cpu().numpy(),
                 'det_gt': det_gt,
-                'token': tokens[batch_idx],
+                # 'token': tokens[batch_idx],  # ! for LD
                 'scores': preds['scores'][batch_idx].detach().cpu().numpy(),
                 'labels': preds['labels'][batch_idx].detach().cpu().numpy(),
             }
@@ -267,6 +267,7 @@ class DGHead(BaseMapHead):
         return ret_list
 
 def pack_groundtruth(batch_idx,gts,tokens,range_size,gen_net_name='gen',coord_dim=2):
+    # ! tokens = None
 
     if 'keypoints' in gts['det']:
         gt_bbox = \
@@ -283,7 +284,7 @@ def pack_groundtruth(batch_idx,gts,tokens,range_size,gen_net_name='gen',coord_di
         gts['gen']['lines_bs_idx'].cpu().numpy() == batch_idx)[0]
     
     ret_groundtruth = {
-        'token': tokens[batch_idx],
+        # 'token': tokens[batch_idx],
         'nline': len(batch2seq),
         'labels': gts['gen']['lines_cls'][batch2seq].detach().cpu().numpy(),
         'lines': [],

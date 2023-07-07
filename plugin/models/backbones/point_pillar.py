@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-# import torch_scatter
+import torch_scatter
 
 from .pointpillar_utils.voxel import points_to_voxels
 
@@ -136,7 +136,7 @@ class PointPillarEncoder(nn.Module):
     self.xbound = xbound
     self.ybound = ybound
     self.zbound = zbound
-    self.pn = PointNet(15, 64)
+    self.pn = PointNet(14, 64)
     self.block1 = PillarBlock(64, dims=64, num_layers=2, stride=1)
     self.block2 = PillarBlock(64, dims=128, num_layers=3, stride=2)
     self.block3 = PillarBlock(128, 256, num_layers=3, stride=2)

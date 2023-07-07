@@ -269,7 +269,7 @@ class PolylineGenerator(nn.Module):
                 
         logits = self.body(
             # Last element not used for preds
-            batch['polylines'][:, :-1],
+            batch['polylines'][:, :-1],  # seqs
             global_context_embedding=global_context,
             sequential_context_embeddings=seq_context,
             return_logits=True,

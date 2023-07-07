@@ -70,7 +70,7 @@ def quantize_verts(
         Args:
             verts: seqlen, 2
     """
-    min_range = 0
+    min_range = -1  # ! debug
     max_range = 1
     range_quantize = np.array(canvas_size) - 1  # (0-199) = 200
 
@@ -238,7 +238,7 @@ class PolygonizeLocalMapBbox(object):
             kp_labels.append(label)
 
             gkp = kp
-            if not self.test_mode:
+            if not self.test_mode: # ??? why test mode is True when training
                 gkp = get_bbox(polyline,
                                mode, self.threshold, self.num_point, random=True)
 

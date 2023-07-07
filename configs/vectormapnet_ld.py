@@ -23,7 +23,7 @@ class2label = {
 }
 
 # rasterize params
-roi_size = (60, 30)
+roi_size = (60, 30)  # annotation range
 canvas_size = (200, 100)
 thickness = 3
 
@@ -33,8 +33,8 @@ sample_dist = 1.0
 sample_num = -1
 
 input_modality = dict(
-    use_lidar=True,
-    use_camera=False,
+    use_lidar=False,
+    use_camera=True,
     use_radar=False,
     use_map=False,
     use_external=False)
@@ -47,7 +47,7 @@ num_points = 30
 
 
 model = dict(
-    type='VectorMapNet',
+    type='VectorMapNetLD',
     backbone_cfg=dict(
         type='IPMEncoder',
         img_backbone=dict(
@@ -62,7 +62,8 @@ model = dict(
             norm_eval=True,
             style='caffe',
             dcn=dict(type='DCNv2', deform_groups=1, fallback_on_stride=False),
-            stage_with_dcn=(False, False, True, True)),
+            stage_with_dcn=(False, False, True, True),
+            ),
         img_neck=dict(
             type='FPN',
             in_channels=[256, 512, 1024, 2048],
@@ -83,8 +84,8 @@ model = dict(
         out_channels=128,
         pretrained=None,
         num_cam=6,
-        use_image = input_modality['use_camera'],
-        use_lidar = input_modality['use_lidar'],
+        use_image=False,
+        use_lidar=True,
         ),
     head_cfg=dict(
         type='DGHead',
@@ -206,25 +207,28 @@ model = dict(
 )
 
 train_pipeline = [
-    dict(type='LoadMultiViewImagesFromFiles'),
-    dict(type='ResizeMultiViewImages',
-         size = (int(128*2), int((16/9*128)*2)), # H, W
-         change_intrinsics=True,
-         ),
+    # dict(type='LoadMultiViewImagesFromFiles'),
+    # dict(type='ResizeMultiViewImages',
+    #      size = (int(128*2), int((16/9*128)*2)), # H, W
+    #      change_intrinsics=True,
+    #      ),
     dict(
-        type='VectorizeLocalMap',
-        data_root='./datasets/nuScenes',
+        type='VectorizeLocalMapLD',  # ! customized
+        ann_file='./datasets/RSU/map_info.pkl',
         patch_size=(roi_size[1],roi_size[0]),
+        line_classes=['road_boundary', 'lane'],
+        ped_crossing_classes=[],
+        contour_classes=[],
+        centerline_class=[],
         sample_dist=0.7,
         num_samples=150,
         sample_pts=False,
-        max_len=num_points,
         padding=False,
+        max_len=num_points,
         normalize=True,
         fixed_num={
-            'ped_crossing': -1,
-            'divider': -1,
-            'contours': -1,
+            'road_boundary': -1,
+            'lane': -1,
             'others': -1,
         },
         class2label=class2label,
@@ -240,15 +244,10 @@ train_pipeline = [
         threshold=4/200,
         flatten=False,
     ),
-    dict(type='Normalize3D', **img_norm_cfg),
-    dict(type='PadMultiViewImages', size_divisor=32, change_intrinsics=True),
+    # dict(type='Normalize3D', **img_norm_cfg),
+    # dict(type='PadMultiViewImages', size_divisor=32, change_intrinsics=True),
     dict(type='FormatBundleMap', collect=False),
-    dict(type='Collect3D', keys=['img', 'polys', 'points'], meta_keys=(
-        'img_shape', 'lidar2img', 'cam_extrinsics',
-        'pad_shape', 'scale_factor', 'flip', 'cam_intrinsics',
-        'img_norm_cfg', 'sample_idx',
-        'cam2ego_rotations', 'cam2ego_translations',
-        'ego2global_translation', 'ego2global_rotation', 'ego2img'))
+    dict(type='Collect3D', keys=['polys', 'points'], meta_keys=('sample_idx',))
 ]
 
 
@@ -257,9 +256,9 @@ eval_cfg = dict(
     origin=(-30,-15),
     evaluation_cfg=dict(
         result_path='./',
-        dataroot='/mnt/datasets/nuScenes/',
+        dataroot='TODO',
         # will be overwirte in code
-        ann_file='/mnt/datasets/nuScenes/nuScences_map_trainval_infos_train.pkl',
+        ann_file='TODO',
         num_class=num_class,
         class_name=['ped_crossing','divider','contours'],
     )
@@ -267,13 +266,11 @@ eval_cfg = dict(
 
 data = dict(
     samples_per_gpu=2,
-    workers_per_gpu=1,
+    workers_per_gpu=0,
     train=dict(
-        type='NuscDataset',
-        data_root='./datasets/nuScenes',
-        # ann_file='./datasets/nuScenes/nuscenes_map_infos_train.pkl',
-        ann_file='./datasets/nuScenes/nuscenes_map_infos_train.pkl',
-        modality=input_modality,
+        type='LDDataset',
+        data_root='./datasets/RSU',
+        ann_file='./datasets/RSU/map_info.pkl',
         roi_size=roi_size,
         cat2id=class2label,
         pipeline=train_pipeline,
@@ -281,10 +278,9 @@ data = dict(
         interval=1,
     ),
     val=dict(
-        type='NuscDataset',
-        data_root='./datasets/nuScenes',
-        ann_file='./datasets/nuScenes/nuscenes_map_infos_val.pkl',
-        modality=input_modality,
+        type='LDDataset',
+        data_root='./datasets/RSU',
+        ann_file='./datasets/RSU/map_info.pkl',
         roi_size=roi_size,
         cat2id=class2label,
         pipeline=train_pipeline,
@@ -292,22 +288,21 @@ data = dict(
         interval=1,
     ),
     test=dict(
-        type='NuscDataset',
-        data_root='./datasets/nuScenes',
-        ann_file='./datasets/nuScenes/nuscenes_map_infos_val.pkl',
-        modality=input_modality,
+        type='LDDataset',
+        data_root='./datasets/RSU',
+        ann_file='./datasets/RSU/map_info.pkl',
         roi_size=roi_size,
         cat2id=class2label,
         pipeline=train_pipeline,
         eval_cfg=eval_cfg,
-        samples_per_gpu=24,
         interval=1,
+        samples_per_gpu=2,
     ),
 )
 
 optimizer = dict(
     type='AdamW',
-    lr=1e-3,
+    lr=1e-4,
     paramwise_cfg=dict(
     custom_keys={
         'backbone': dict(lr_mult=0.1),
@@ -331,7 +326,7 @@ evaluation = dict(
     interval=1, 
     **eval_kwargs)
 
-total_epochs = 130
+total_epochs = 500
 runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
 
 find_unused_parameters = True

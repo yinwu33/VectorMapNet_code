@@ -5,6 +5,7 @@ from .rasterize import RasterizeMap
 from .vectorize import VectorizeMap
 from .poly_bbox import PolygonizeLocalMapBbox
 from .map_transform import VectorizeLocalMap
+from .map_transform_ld import VectorizeLocalMapLD
 # for argoverse
 
 __all__ = [

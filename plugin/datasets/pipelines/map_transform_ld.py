@@ -21,57 +21,45 @@ warnings.filterwarnings("ignore")
 
 
 @PIPELINES.register_module(force=True)
-class VectorizeLocalMap(object):
+class VectorizeLocalMapLD(object):  # ! customized
 
     def __init__(self,
-                 data_root="/mnt/datasets/nuScenes/",
-                 patch_size=(30, 60),
-                 line_classes=['road_divider', 'lane_divider'],
-                 ped_crossing_classes=['ped_crossing'],
-                 contour_classes=['road_segment','lane'],
-                 centerline_class=['lane_connector','lane'],
-                 sample_dist=10,
-                 num_samples=250,
-                 padding=True,
-                 max_len=30,
-                 normalize=True,
-                 fixed_num=50,
-                 sample_pts=True,
-                 class2label={
-                     'ped_crossing': 0,
-                     'divider': 1,
-                     'contours': 2,
-                     'others': -1,
-                 }, 
+                 ann_file,
+                 patch_size,
+                 line_classes,
+                 ped_crossing_classes,
+                 contour_classes,
+                 centerline_class,
+                 sample_dist,
+                 num_samples,
+                 padding,
+                 max_len,
+                 normalize,
+                 fixed_num,
+                 sample_pts,
+                 class2label, 
                  **kwargs):
         '''
         Args:
             fixed_num = -1 : no fixed num
         '''
         super().__init__()
-        self.data_root = data_root
-        self.MAPS = ['boston-seaport', 'singapore-hollandvillage',
-                     'singapore-onenorth', 'singapore-queenstown']
+        
         self.line_classes = line_classes
-        self.ped_crossing_classes = ped_crossing_classes
-        self.contour_classes = contour_classes
-        self.centerline_class = centerline_class
+        self.ped_crossing_classes = ped_crossing_classes  # []
+        self.contour_classes = contour_classes  # []
+        self.centerline_class = centerline_class  # []
 
 
         self.class2label = class2label
-        self.nusc_maps = {}
-        self.map_explorer = {}
-        for loc in self.MAPS:
-            self.nusc_maps[loc] = NuScenesMap(
-                dataroot=self.data_root, map_name=loc)
-            self.map_explorer[loc] = CNuScenesMapExplorer(self.nusc_maps[loc])
+
+        with open(ann_file, 'rb') as f:
+            import pickle
+            self.map_info = pickle.load(f)
 
         self.layer2class = {
-            'ped_crossing': 'ped_crossing',
-            'lane_divider': 'divider',
-            'road_divider': 'divider',
-            'road_segment': 'contours',
-            'lane': 'contours',
+            'lane': 'divider',
+            'road_boundary': 'divider',
         }
 
 
@@ -88,8 +76,8 @@ class VectorizeLocalMap(object):
             'divider': 'orange',
             'contours': 'green',
             # origin type
-            'lane_divider': 'orange',
-            'road_divider': 'orange',
+            'lane': 'orange',  # we need
+            'road_boundary': 'orange',  # we need
             'road_segment': 'green',
             'lane': 'green',
         }
@@ -106,12 +94,11 @@ class VectorizeLocalMap(object):
         self.size = np.array([self.patch_size[1], self.patch_size[0]]) + 2
 
 
-    def retrive_geom(self, patch_params):
+    def retrive_geom(self):
         '''
             Get the geometric data.
             Returns: dict
         '''
-        patch_box, patch_angle, location = patch_params
         geoms_dict = {}
 
         layers = \
@@ -119,20 +106,20 @@ class VectorizeLocalMap(object):
             self.contour_classes
 
         layers = set(layers)
-        for layer_name in layers:
-            # retrieve the geo from nuScenesMap with layer name
-
-            return_token = False
-            # retrive the geo
-            if layer_name in self.nusc_maps[location].non_geometric_line_layers:
-                geoms = self.map_explorer[location]._get_layer_line(
-                    patch_box, patch_angle, layer_name)
-            elif layer_name in self.nusc_maps[location].lookup_polygon_layers:
-                geoms = self.map_explorer[location]._get_layer_polygon(
-                    patch_box, patch_angle, layer_name, return_token=return_token)
+        for layer_name in layers:  # layers = ['road_boundary', 'lane']
+            # retrieve from self.map_info
+            if layer_name in self.map_info:
+                geoms_array = self.map_info[layer_name]  # geoms = [np.ndarray, np.ndarray, ...]
+                
+                geoms = []
+                
+                for geom in geoms_array:
+                    if geom.shape[0] < 2:
+                        continue
+                    geoms.append(LineString(geom))
             else:
-                raise ValueError('{} is not a valid layer'.format(layer_name))
-
+                raise ValueError(f"Layer {layer_name} not found in map_info.")
+            
             if geoms is None:
                 continue
 
@@ -149,8 +136,8 @@ class VectorizeLocalMap(object):
         customized_geoms_dict = {}
 
         # contour
-        roads = geoms_dict['road_segment']
-        lanes = geoms_dict['lane']
+        roads = []
+        lanes = []
         union_roads = ops.unary_union(roads)
         union_lanes = ops.unary_union(lanes)
         union_segments = ops.unary_union([union_roads, union_lanes])
@@ -160,7 +147,7 @@ class VectorizeLocalMap(object):
         customized_geoms_dict['contours'] = ('contours', [union_segments, ])
 
         # ped
-        geoms_dict['ped_crossing'] = self.union_ped(geoms_dict['ped_crossing'])
+        geoms_dict['ped_crossing'] = self.union_ped([])
 
         for layer_name, custom_class in self.layer2class.items():
 
@@ -223,7 +210,7 @@ class VectorizeLocalMap(object):
 
             line_strings = self.process_func[customized_class](geoms)
 
-            vector_len = self.fixed_num[customized_class]
+            vector_len = -1
             if override_veclen is not None:
                 vector_len = override_veclen
 
@@ -468,26 +455,11 @@ class VectorizeLocalMap(object):
 
         return line
 
-    def get_global_patch(self, input_dict: dict):
-        # transform to global coordination
-        location = input_dict['location']
-        ego2global_translation = input_dict['ego2global_translation']
-        ego2global_rotation = input_dict['ego2global_rotation']
-        map_pose = ego2global_translation[:2]
-        rotation = Quaternion(ego2global_rotation)
-        patch_box = (map_pose[0], map_pose[1],
-                     self.patch_size[0], self.patch_size[1])
-        patch_angle = quaternion_yaw(rotation) / np.pi * 180
-
-        patch_params = (patch_box, patch_angle, location)
-        return patch_params
 
     def vectorization(self, input_dict: dict):
 
-        patch_params = self.get_global_patch(input_dict)
-
-        # Retrive geo
-        geoms_dict = self.retrive_geom(patch_params)
+        # Retrive geo from map_info.pkl
+        geoms_dict = self.retrive_geom()
         # self.debug_vis(patch_params, geoms_dict=geoms_dict, orgin=False)
 
         # Optional union the data and convert customized labels
