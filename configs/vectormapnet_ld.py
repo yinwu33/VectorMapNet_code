@@ -265,8 +265,8 @@ eval_cfg = dict(
 )
 
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=0,
+    samples_per_gpu=22,
+    workers_per_gpu=8,
     train=dict(
         type='LDDataset',
         data_root='./datasets/RSU',
