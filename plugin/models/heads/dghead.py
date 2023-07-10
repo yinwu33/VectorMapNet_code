@@ -26,7 +26,7 @@ class DGHead(BaseMapHead):
                  sync_cls_avg_factor=True,
                  augmentation=False,
                  augmentation_kwargs=None,
-                 joint_training=False,
+                 joint_training=True,
                  **kwargs):
         super().__init__()
 

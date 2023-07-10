@@ -201,6 +201,7 @@ model = dict(
     max_num_vertices=80,
     top_p_gen_model=0.9,
     sync_cls_avg_factor=True,
+    joint_training=True,
     ),  
     with_auxiliary_head=False,
     model_name='VectorMapNet'
@@ -265,7 +266,7 @@ eval_cfg = dict(
 )
 
 data = dict(
-    samples_per_gpu=22,
+    samples_per_gpu=16,
     workers_per_gpu=8,
     train=dict(
         type='LDDataset',
