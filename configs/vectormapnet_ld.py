@@ -7,12 +7,12 @@ plugin = True
 plugin_dir = 'plugin/'
 
 point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
-voxel_size = [0.2, 0.2, 8]
+voxel_size = [0.1, 0.1, 8]
 
-img_norm_cfg = dict(
-    mean=[103.530, 116.280, 123.675], std=[1.0, 1.0, 1.0], to_rgb=False)
+# img_norm_cfg = dict(
+#     mean=[103.530, 116.280, 123.675], std=[1.0, 1.0, 1.0], to_rgb=False)
 
-img_size = (128, 352)
+# img_size = (128, 352)
 
 class2label = {
     'ped_crossing': 0,
@@ -23,8 +23,8 @@ class2label = {
 }
 
 # rasterize params
-roi_size = (60, 30)  # annotation range
-canvas_size = (200, 100)
+roi_size = (60, 60)  # annotation range
+canvas_size = (200, 200)
 thickness = 3
 
 # vectorize params
@@ -97,7 +97,7 @@ model = dict(
         det_net_cfg=dict(
             type='MapElementDetector',
             num_query=120,
-            max_lines=35,
+            max_lines=70,
             bbox_size=2,
             canvas_size=canvas_size,
             separate_detect=False,
@@ -253,7 +253,7 @@ train_pipeline = [
 
 eval_cfg = dict(
     patch_size=roi_size,
-    origin=(-30,-15),
+    origin=(0, 0),  # origin=(-30,-15),
     evaluation_cfg=dict(
         result_path='./',
         dataroot='TODO',
@@ -269,8 +269,7 @@ data = dict(
     workers_per_gpu=8,
     train=dict(
         type='LDDataset',
-        data_root='./datasets/RSU',
-        ann_file='./datasets/RSU/map_info.pkl',
+        data_root='./datasets/RSU/LIDAR',
         roi_size=roi_size,
         cat2id=class2label,
         pipeline=train_pipeline,
@@ -279,8 +278,7 @@ data = dict(
     ),
     val=dict(
         type='LDDataset',
-        data_root='./datasets/RSU',
-        ann_file='./datasets/RSU/map_info.pkl',
+        data_root='./datasets/RSU/LIDAR_ONE',
         roi_size=roi_size,
         cat2id=class2label,
         pipeline=train_pipeline,
@@ -289,8 +287,7 @@ data = dict(
     ),
     test=dict(
         type='LDDataset',
-        data_root='./datasets/RSU',
-        ann_file='./datasets/RSU/map_info.pkl',
+        data_root='./datasets/RSU/LIDAR_ONE',
         roi_size=roi_size,
         cat2id=class2label,
         pipeline=train_pipeline,
@@ -302,7 +299,7 @@ data = dict(
 
 optimizer = dict(
     type='AdamW',
-    lr=1e-4,
+    lr=1e-3,
     paramwise_cfg=dict(
     custom_keys={
         'backbone': dict(lr_mult=0.1),
@@ -331,7 +328,7 @@ runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
 
 find_unused_parameters = True
 log_config = dict(
-    interval=50,
+    interval=10,
     hooks=[
         dict(type='TextLoggerHook'),
         dict(type='TensorboardLoggerHook')

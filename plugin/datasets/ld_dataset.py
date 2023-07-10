@@ -26,7 +26,6 @@ from .evaluation.precision_recall.average_precision_gen import eval_chamfer
 class LDDataset(Dataset):
     def __init__(self,
                  data_root,
-                 ann_file,
                  roi_size,
                  cat2id,
                  pipeline=None,
@@ -45,7 +44,6 @@ class LDDataset(Dataset):
                  ):
         super().__init__(        )
         
-        self.ann_file = ann_file
         self.modality = modality
         self.pipeline = Compose(pipeline) if pipeline is not None else None
         self.cat2id = cat2id
@@ -56,7 +54,7 @@ class LDDataset(Dataset):
         self.eval_cfg = eval_cfg
         
         # lidar files
-        lidar_folder_path = osp.join(data_root, 'LIDAR')
+        lidar_folder_path = osp.join(data_root)
         self.samples = []
         for file in os.listdir(lidar_folder_path):
             self.samples.append(osp.join(lidar_folder_path, file))
@@ -119,13 +117,14 @@ class LDDataset(Dataset):
             vector_lines = []
             for i in range(case['nline']):
                 vector = case['lines'][i] * patch_size + origin
+                bboxes = case['bboxes'][i]  # (x1, y1, x2, y2)
                 vector_lines.append({
                     'pts': vector,
                     'pts_num': len(case['lines'][i]),
                     'type': case['labels'][i],
+                    'bbox': bboxes,
                     'confidence_level': case['scores'][i],
                 })
-                # submissions['results'][case['token']] = {}
                 # submissions['results'][case['token']]['vectors'] = vector_lines
             submissions['results']['vectors'] = vector_lines
 
@@ -172,18 +171,18 @@ class LDDataset(Dataset):
         '''
 
         print('len of the results', len(results))
-        name = 'results_nuscence' if name is None else name
+        name = 'result_ld' if name is None else name
         result_path = self.format_results(
             results, name, prefix=self.work_dir, patch_size=self.eval_cfg.patch_size, origin=self.eval_cfg.origin)
 
         self.eval_cfg.evaluation_cfg['result_path'] = result_path
-        self.eval_cfg.evaluation_cfg['ann_file'] = self.ann_file
+        # self.eval_cfg.evaluation_cfg['ann_file'] = self.ann_file
 
-        mean_ap = eval_chamfer(
-            self.eval_cfg.evaluation_cfg, update=True, logger=logger)
+        # mean_ap = eval_chamfer(
+        #     self.eval_cfg.evaluation_cfg, update=True, logger=logger)
 
         result_dict = {
-            'mAP': mean_ap,
+            'mAP': 0.0,
         }
 
         print('VectormapNet Evaluation Results:')

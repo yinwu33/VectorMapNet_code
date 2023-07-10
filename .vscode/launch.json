@@ -21,12 +21,28 @@
             "justMyCode": false,
             "args": [
                 "configs/vectormapnet_ld.py",
-                // "--gpu-ids",
-                // "0",
             ],
             "env": {
                 // "CUDA_LAUNCH_BLOCKING": "1"
                 "CUDA_VISIBLE_DEVICES": "6",
+            }
+        },
+        {
+            "name": "test_ld",
+            "type": "python",
+            "request": "launch",
+            "program": "tools/test.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "configs/vectormapnet_ld.py",
+                "work_dirs/vectormapnet_ld/latest.pth",
+                "--eval",
+                "name"
+            ],
+            "env": {
+                // "CUDA_LAUNCH_BLOCKING": "1"
+                "CUDA_VISIBLE_DEVICES": "0",
             }
         },
     ]
