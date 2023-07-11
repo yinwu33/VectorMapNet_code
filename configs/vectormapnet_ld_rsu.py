@@ -215,7 +215,6 @@ train_pipeline = [
     #      ),
     dict(
         type='VectorizeLocalMapLD',  # ! customized
-        ann_file='./datasets/RSU/map_info.pkl',
         patch_size=(roi_size[1],roi_size[0]),
         line_classes=['road_boundary', 'lane'],
         ped_crossing_classes=[],
@@ -266,11 +265,12 @@ eval_cfg = dict(
 )
 
 data = dict(
-    samples_per_gpu=16,
-    workers_per_gpu=8,
+    samples_per_gpu=2,
+    workers_per_gpu=2,
     train=dict(
-        type='LDDataset',
+        type='LDDatasetRSU',
         data_root='./datasets/RSU/LIDAR',
+        ann_file='./datasets/RSU/map_info.pkl',
         roi_size=roi_size,
         cat2id=class2label,
         pipeline=train_pipeline,
@@ -278,8 +278,9 @@ data = dict(
         interval=1,
     ),
     val=dict(
-        type='LDDataset',
+        type='LDDatasetRSU',
         data_root='./datasets/RSU/LIDAR_ONE',
+        ann_file='./datasets/RSU/map_info.pkl',
         roi_size=roi_size,
         cat2id=class2label,
         pipeline=train_pipeline,
@@ -287,8 +288,9 @@ data = dict(
         interval=1,
     ),
     test=dict(
-        type='LDDataset',
+        type='LDDatasetRSU',
         data_root='./datasets/RSU/LIDAR_ONE',
+        ann_file='./datasets/RSU/map_info.pkl',
         roi_size=roi_size,
         cat2id=class2label,
         pipeline=train_pipeline,

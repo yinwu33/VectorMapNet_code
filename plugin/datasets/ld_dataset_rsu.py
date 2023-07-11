@@ -23,9 +23,10 @@ from .evaluation.precision_recall.average_precision_gen import eval_chamfer
 
 
 @DATASETS.register_module()
-class LDDataset(Dataset):
+class LDDatasetRSU(Dataset):
     def __init__(self,
                  data_root,
+                 ann_file,
                  roi_size,
                  cat2id,
                  pipeline=None,
@@ -58,6 +59,10 @@ class LDDataset(Dataset):
         self.samples = []
         for file in os.listdir(lidar_folder_path):
             self.samples.append(osp.join(lidar_folder_path, file))
+            
+        with open(ann_file, "rb") as f:
+            import pickle
+            self.map_info = pickle.load(f)
 
         # dummy flag to fit with mmdet
         self.flag = np.zeros(len(self), dtype=np.uint8)
@@ -71,7 +76,8 @@ class LDDataset(Dataset):
         points = self._load_points(lidar_bin_file).reshape(-1, 4)
         
         input_dict = dict(
-            points = BasePoints(points, 4)
+            points = BasePoints(points, 4),
+            map_info = self.map_info
         )
         
         return input_dict

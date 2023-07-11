@@ -24,7 +24,6 @@ warnings.filterwarnings("ignore")
 class VectorizeLocalMapLD(object):  # ! customized
 
     def __init__(self,
-                 ann_file,
                  patch_size,
                  line_classes,
                  ped_crossing_classes,
@@ -52,10 +51,6 @@ class VectorizeLocalMapLD(object):  # ! customized
 
 
         self.class2label = class2label
-
-        with open(ann_file, 'rb') as f:
-            import pickle
-            self.map_info = pickle.load(f)
 
         self.layer2class = {
             'lane': 'divider',
@@ -489,6 +484,8 @@ class VectorizeLocalMapLD(object):  # ! customized
         return input_dict
 
     def __call__(self, input_dict: dict):
+        
+        self.map_info = input_dict['map_info']
 
         input_dict = self.vectorization(input_dict)
 
