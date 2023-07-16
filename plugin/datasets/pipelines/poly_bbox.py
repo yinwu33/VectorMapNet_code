@@ -10,7 +10,6 @@ from shapely.geometry import CAP_STYLE, JOIN_STYLE
 
 
 def evaluate_lin_curvature(polyline):
-
     n = polyline.shape[0]
     if n == 2:
         return None
@@ -24,17 +23,16 @@ def evaluate_lin_curvature(polyline):
     denominator = curvature.sum()
     denominator = 1 if denominator == 0 else denominator
 
-    weight = curvature/denominator * ((n-2)/n)
+    weight = curvature / denominator * ((n - 2) / n)
     print('curvature: ', weight)
 
     return weight
 
 
 def evaluate_line(polyline, curvature=False):
-
     edge = np.linalg.norm(polyline[1:] - polyline[:-1], axis=-1)
 
-    start_end_weight = edge[(0, -1), ].copy()
+    start_end_weight = edge[(0, -1),].copy()
     mid_weight = (edge[:-1] + edge[1:]) * .5
 
     pts_weight = np.concatenate(
@@ -51,12 +49,12 @@ def evaluate_line(polyline, curvature=False):
         pts_weight_c = pts_weight.copy()
         pts_weight_c[1:-1] = weight_c
 
-        pts_weight = (pts_weight+pts_weight_c)/2
+        pts_weight = (pts_weight + pts_weight_c) / 2
 
     # add weights for stop index
-    pts_weight = np.repeat(pts_weight, 2)/2
+    pts_weight = np.repeat(pts_weight, 2) / 2
     pts_weight = np.pad(pts_weight, ((0, 1)),
-                        constant_values=1/(len(polyline)*2))
+                        constant_values=1 / (len(polyline) * 2))
 
     return pts_weight
 
@@ -69,13 +67,20 @@ def quantize_verts(
     """Convert vertices from its original range ([-1,1]) to discrete values in [0, n_bits**2 - 1].
         Args:
             verts: seqlen, 2
+            
+            
+        verts should be in range [-1, 1]
+        
+        outputs: x in range [0, 199], y in range [0, 99]
     """
+
+    assert np.all(verts >= -1) and np.all(verts <= 1)
+
     min_range = -1  # ! debug
     max_range = 1
     range_quantize = np.array(canvas_size) - 1  # (0-199) = 200
 
-    verts_ratio = (verts - min_range) / (
-        max_range - min_range)
+    verts_ratio = (verts - min_range) / (max_range - min_range)
     verts_quantize = verts_ratio * range_quantize[:coord_dim]
 
     return verts_quantize.astype('int32')
@@ -91,10 +96,10 @@ def get_bbox(
         polyline = LineString(polyline_nd)
         bbox = polyline.bounds
         minx, miny, maxx, maxy = bbox
-        W, H = maxx-minx, maxy-miny
+        W, H = maxx - minx, maxy - miny
 
         if W < threshold or H < threshold:
-            remain = (threshold - min(W, H))/2
+            remain = (threshold - min(W, H)) / 2
             bbox = polyline.buffer(remain).envelope.bounds
             minx, miny, maxx, maxy = bbox
 
@@ -105,7 +110,7 @@ def get_bbox(
         polyline = LineString(polyline_nd)
         if random:
             distances = np.random.uniform(
-                0-polyline.length*0.2, polyline.length*1.2, (num_points,))
+                0 - polyline.length * 0.2, polyline.length * 1.2, (num_points,))
             distances = np.sort(distances)
         else:
             distances = np.linspace(0, polyline.length, num_points)
@@ -127,7 +132,7 @@ class PolygonizeLocalMapBbox(object):
                  mode='xyxy',
                  centerline_mode='xyxy',
                  num_point=10,
-                 threshold=6/200,
+                 threshold=6 / 200,
                  debug=False,
                  test_mode=False,
                  flatten=True,
@@ -181,9 +186,9 @@ class PolygonizeLocalMapBbox(object):
                 polyline_weight = np.ones_like(polyline).reshape(-1)
                 polyline_weight = np.pad(
                     polyline_weight, ((0, 1),), constant_values=1.)
-                polyline_weight = polyline_weight/polyline_weight.sum()
+                polyline_weight = polyline_weight / polyline_weight.sum()
 
-            #flatten and quantilized
+            # flatten and quantilized
             fpolyline = quantize_verts(
                 polyline, self.canvas_size, self.coord_dim)
             fpolyline = fpolyline.reshape(-1)
@@ -191,7 +196,7 @@ class PolygonizeLocalMapBbox(object):
             # reindex starting from 1, and add a zero stopping token(EOS),
             fpolyline = \
                 np.pad(fpolyline + self.coord_dim_start_idx, ((0, 1),),
-                       constant_values=label+1 if self.flatten else 0)
+                       constant_values=label + 1 if self.flatten else 0)
             fpolyline_msk = np.ones(fpolyline.shape, dtype=np.bool)
 
             polyline_masks.append(fpolyline_msk)
@@ -207,7 +212,7 @@ class PolygonizeLocalMapBbox(object):
                 polyline_map_mask, ((0, 1),), constant_values=1)
             polyline_map_weights = np.pad(
                 polyline_map_weights, ((0, 1),),
-                constant_values=polyline_map_weights.sum()/len(polylines))
+                constant_values=polyline_map_weights.sum() / len(polylines))
         else:
             polyline_map = polylines
             polyline_map_mask = polyline_masks
@@ -238,7 +243,7 @@ class PolygonizeLocalMapBbox(object):
             kp_labels.append(label)
 
             gkp = kp
-            if not self.test_mode: # ??? why test mode is True when training
+            if not self.test_mode:  # ??? why test mode is True when training
                 gkp = get_bbox(polyline,
                                mode, self.threshold, self.num_point, random=True)
 
@@ -250,7 +255,7 @@ class PolygonizeLocalMapBbox(object):
             if self.flatten:
                 fkp = \
                     np.pad(fkp + self.coord_dim_start_idx, ((0, 1),),
-                           constant_values=label+1 if not self.flatten else 0)
+                           constant_values=label + 1 if not self.flatten else 0)
             fkps_msk = np.ones(fkp.shape, dtype=np.bool)
 
             qkp_masks.append(fkps_msk)
@@ -266,11 +271,11 @@ class PolygonizeLocalMapBbox(object):
             qkp_msks = np.stack(qkp_masks)
 
         # format det
-        kps = np.stack(kps, axis=0).astype(np.float32)*self.canvas_size
+        kps = np.stack(kps, axis=0).astype(np.float32) * self.canvas_size
         kp_labels = np.array(kp_labels)
         # restrict the boundary
-        kps[..., 0] = np.clip(kps[..., 0], 0.1, self.canvas_size[0]-0.1)
-        kps[..., 1] = np.clip(kps[..., 1], 0.1, self.canvas_size[1]-0.1)
+        kps[..., 0] = np.clip(kps[..., 0], 0.1, self.canvas_size[0] - 0.1)
+        kps[..., 1] = np.clip(kps[..., 1], 0.1, self.canvas_size[1] - 0.1)
 
         # nbox, boxsize(4)*coord_dim(2)
         kps = kps.reshape(kps.shape[0], -1)
@@ -330,18 +335,19 @@ class PolygonizeLocalMapBbox(object):
 
 def unflatten_seq(flat_polylines, class_num=3):
     """Converts from flat face sequence to a list of separate faces."""
+
     def group(seq):
         g = []
         for el in seq:
             if el == 0:
                 yield g
                 g = []
-            elif 0 < el < class_num+1:
-                g.append(el-1)
+            elif 0 < el < class_num + 1:
+                g.append(el - 1)
                 yield g
                 g = []
             else:
-                g.append(el - (class_num+1))
+                g.append(el - (class_num + 1))
         yield g
 
     outputs = list(group(flat_polylines))[:-1]
@@ -351,13 +357,14 @@ def unflatten_seq(flat_polylines, class_num=3):
 
 def unflatten_seq_by_others(target_polyline, flat_polylines, class_num=3):
     """Converts from flat face sequence to a list of separate faces."""
+
     def group(seq, tseq):
         g = []
         for el, tel in zip(seq, tseq):
             if el == 0:
                 yield g
                 g = []
-            elif 0 < el < class_num+1:
+            elif 0 < el < class_num + 1:
                 g.append(tel)
                 yield g
                 g = []

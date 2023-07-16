@@ -13,22 +13,22 @@
             "justMyCode": true
         },
         {
-            "name": "train_ld",
+            "name": "train_ld_rsu",
             "type": "python",
             "request": "launch",
             "program": "tools/train.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "configs/vectormapnet_ld.py",
+                "configs/vectormapnet_ld_rsu.py",
             ],
             "env": {
                 // "CUDA_LAUNCH_BLOCKING": "1"
-                "CUDA_VISIBLE_DEVICES": "6",
+                "CUDA_VISIBLE_DEVICES": "0",
             }
         },
         {
-            "name": "test_ld",
+            "name": "test_ld_rsu",
             "type": "python",
             "request": "launch",
             "program": "tools/test.py",
@@ -36,13 +36,79 @@
             "justMyCode": false,
             "args": [
                 "configs/vectormapnet_ld.py",
-                "work_dirs/vectormapnet_ld/latest.pth",
+                "work_dirs/vectormapnet_ld_rsu/latest.pth",
                 "--eval",
                 "name"
             ],
             "env": {
                 // "CUDA_LAUNCH_BLOCKING": "1"
                 "CUDA_VISIBLE_DEVICES": "0",
+            }
+        },
+        {
+            "name": "train_ld_mini",
+            "type": "python",
+            "request": "launch",
+            "program": "tools/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "configs/vectormapnet_ld_mini.py",
+            ],
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1"
+                // "CUDA_VISIBLE_DEVICES": "0",
+            }
+        },
+        {
+            "name": "test_ld_mini",
+            "type": "python",
+            "request": "launch",
+            "program": "tools/test.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "configs/vectormapnet_ld_mini.py",
+                "work_dirs/vectormapnet_ld_mini/latest.pth",
+                "--eval",
+                "name"
+            ],
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1"
+                // "CUDA_VISIBLE_DEVICES": "0",
+            }
+        },
+        {
+            "name": "train_ld_mini_city",
+            "type": "python",
+            "request": "launch",
+            "program": "tools/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "configs/vectormapnet_ld_mini_city.py",
+            ],
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1"
+                // "CUDA_VISIBLE_DEVICES": "0",
+            }
+        },
+        {
+            "name": "test_ld_mini_city",
+            "type": "python",
+            "request": "launch",
+            "program": "tools/test.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "configs/vectormapnet_ld_mini_city.py",
+                "work_dirs/vectormapnet_ld_mini_city/latest.pth",
+                "--eval",
+                "name"
+            ],
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1"
+                // "CUDA_VISIBLE_DEVICES": "0",
             }
         },
     ]

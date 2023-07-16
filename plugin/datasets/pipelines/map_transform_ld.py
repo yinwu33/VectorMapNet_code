@@ -54,14 +54,14 @@ class VectorizeLocalMapLD(object):  # ! customized
 
         self.layer2class = {
             'lane': 'divider',
-            'road_boundary': 'divider',
+            'road_boundary': 'contours',  # TODO: divider before
         }
 
 
         self.process_func = {
             'ped_crossing': self.ped_geoms_to_vectors,
             'divider': self.line_geoms_to_vectors,
-            'contours': self.poly_geoms_to_vectors,
+            'contours': self.line_geoms_to_vectors,  # TODO, here was polygon before
             'centerline': self.line_geoms_to_vectors,
         }
 
@@ -86,7 +86,7 @@ class VectorizeLocalMapLD(object):  # ! customized
         self.max_len = max_len
         self.normalize = normalize
         self.fixed_num = fixed_num
-        self.size = np.array([self.patch_size[1], self.patch_size[0]]) + 2
+        self.size = np.array([self.patch_size[1], self.patch_size[0]])  # + 2
 
 
     def retrive_geom(self):
@@ -146,8 +146,8 @@ class VectorizeLocalMapLD(object):  # ! customized
 
         for layer_name, custom_class in self.layer2class.items():
 
-            if custom_class == 'contours':
-                continue
+            # if custom_class == 'contours':
+            #     continue
 
             customized_geoms_dict[layer_name] = (
                 custom_class, geoms_dict[layer_name])
@@ -444,11 +444,19 @@ class VectorizeLocalMapLD(object):  # ! customized
         '''
 
         origin = -np.array([self.patch_size[1]/2, self.patch_size[0]/2])
-        # for better learning
-        line = line - origin
-        line = line / self.size
 
-        return line
+        # for better learning
+        # line_ret = (line - origin) / self.size
+
+        half_x = self.size[0] // 2
+        half_y = self.size[1] // 2
+
+        assert line[:, 0].max() <= half_x and line[:, 0].min() >= -half_x
+        assert line[:, 1].max() <= half_y and line[:, 1].min() >= -half_y
+
+        line_ret = line / self.size * 2
+
+        return line_ret
 
 
     def vectorization(self, input_dict: dict):
