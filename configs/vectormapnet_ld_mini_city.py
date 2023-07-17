@@ -6,8 +6,8 @@ type = 'Mapper'
 plugin = True
 plugin_dir = 'plugin/'
 
-point_cloud_range = [-10, -25, -1, 100, 25, 0.]
-voxel_size = [0.2, 0.2, 1]
+point_cloud_range = [0, -25, -1, 100, 25, 3.]
+voxel_size = [0.2, 0.2, 4]
 
 # img_norm_cfg = dict(
 #     mean=[103.530, 116.280, 123.675], std=[1.0, 1.0, 1.0], to_rgb=False)
@@ -16,8 +16,11 @@ voxel_size = [0.2, 0.2, 1]
 
 class2label = {
     'ped_crossing': 0,
-    'divider': 1,
-    'contours': 2,
+    'solid_lane': 1,
+    'dash_lane': 2,
+    "road_boundary": 3,
+    "stop_line": 4,
+    "shadow_area": 5,
     'others': -1,
     # 'centerline': 3,
 }
@@ -217,9 +220,7 @@ train_pipeline = [
         type='VectorizeLocalMapLDCity',  # ! customized
         patch_size=(roi_size[1],roi_size[0]),
         line_classes=['road_boundary', 'solid_lane', 'dash_lane', 'stop_line'],
-        ped_crossing_classes=[],
-        contour_classes=[],
-        centerline_class=[],
+        polygon_classes=['ped_crossing', 'shadow_area'],
         sample_dist=0.7,
         num_samples=150,
         sample_pts=False,
@@ -227,11 +228,12 @@ train_pipeline = [
         max_len=num_points,
         normalize=True,
         fixed_num={
-            'road_boundary': -1,
+            'ped_crossing': -1,
             'solid_lane': -1,
             'dash_lane': -1,
+            'road_boundary': -1,
             'stop_line': -1,
-            'others': -1,
+            'shadow_area': -1,
         },
         class2label=class2label,
         centerline=False,
@@ -333,7 +335,7 @@ runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
 
 find_unused_parameters = True
 log_config = dict(
-    interval=10,
+    interval=5,
     hooks=[
         dict(type='TextLoggerHook'),
         dict(type='TensorboardLoggerHook')

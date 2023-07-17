@@ -26,9 +26,7 @@ class VectorizeLocalMapLDCity(object):  # ! customized
     def __init__(self,
                  patch_size,
                  line_classes,
-                 ped_crossing_classes,
-                 contour_classes,
-                 centerline_class,
+                 polygon_classes,
                  sample_dist,
                  num_samples,
                  padding,
@@ -45,38 +43,28 @@ class VectorizeLocalMapLDCity(object):  # ! customized
         super().__init__()
         
         self.line_classes = line_classes
-        self.ped_crossing_classes = ped_crossing_classes  # []
-        self.contour_classes = contour_classes  # []
-        self.centerline_class = centerline_class  # []
-
+        self.polygon_classes = polygon_classes
 
         self.class2label = class2label
 
         self.layer2class = {
-            'solid_lane': 'divider',
-            'dash_lane': 'divider',
-            'stop_line': 'contours',
-            'road_boundary': 'contours',  # TODO: divider before
+            'ped_crossing': "ped_crossing",
+            'solid_lane': "solid_lane",
+            'dash_lane': "dash_lane",
+            "road_boundary": "road_boundary",
+            "stop_line": "stop_line",
+            "shadow_area": "shadow_area",
         }
 
 
         self.process_func = {
-            'ped_crossing': self.ped_geoms_to_vectors,
-            'divider': self.line_geoms_to_vectors,
-            'contours': self.line_geoms_to_vectors,  # TODO, here was polygon before
-            'centerline': self.line_geoms_to_vectors,
-        }
-
-        self.colors = {
-            # 'ped_crossing': 'blue',
-            'ped_crossing': 'royalblue',
-            'divider': 'orange',
-            'contours': 'green',
-            # origin type
-            'lane': 'orange',  # we need
-            'road_boundary': 'orange',  # we need
-            'road_segment': 'green',
-            'lane': 'green',
+            'ped_crossing': self.poly_geoms_to_vectors,
+            'solid_lane': self.line_geoms_to_vectors,
+            'dash_lane': self.line_geoms_to_vectors,  # TODO, here was polygon before
+            'road_boundary': self.line_geoms_to_vectors,
+            'stop_line': self.line_geoms_to_vectors,
+            'shadow_area': self.poly_geoms_to_vectors,
+            'contours': self.line_geoms_to_vectors,
         }
 
         self.sample_pts = sample_pts
@@ -90,7 +78,6 @@ class VectorizeLocalMapLDCity(object):  # ! customized
         self.fixed_num = fixed_num
         self.size = np.array([self.patch_size[1], self.patch_size[0]])  # + 2
 
-
     def retrive_geom(self):
         '''
             Get the geometric data.
@@ -99,8 +86,7 @@ class VectorizeLocalMapLDCity(object):  # ! customized
         geoms_dict = {}
 
         layers = \
-            self.line_classes + self.ped_crossing_classes + \
-            self.contour_classes
+            self.line_classes + self.polygon_classes
 
         layers = set(layers)
         for layer_name in layers:  # layers = ['road_boundary', 'lane']
@@ -109,11 +95,19 @@ class VectorizeLocalMapLDCity(object):  # ! customized
                 geoms_array = self.map_info[layer_name]  # geoms = [np.ndarray, np.ndarray, ...]
                 
                 geoms = []
-                
-                for geom in geoms_array:
-                    if geom.shape[0] < 2:
-                        continue
-                    geoms.append(LineString(geom))
+
+                if layer_name in self.line_classes:
+                    for geom in geoms_array:
+                        if geom.shape[0] < 2:
+                            continue
+                        geoms.append(LineString(geom))
+                elif layer_name in self.polygon_classes:
+                    for geom in geoms_array:
+                        if geom.shape[0] < 3:
+                            continue
+
+                        # use multipolygon
+                        geoms.append(MultiPolygon([Polygon(geom)]))
             else:
                 raise ValueError(f"Layer {layer_name} not found in map_info.")
             
