@@ -171,7 +171,7 @@ class DETRMapFixedNumHead(BaseMapHead):
                     [nb_dec, bs, num_query, cls_out_channels].
                 all_lines_preds (Tensor):
                     [nb_dec, bs, num_query, num_points, 2].
-        '''
+        ''' 
 
         x = bev_feature[0]
         x = self.input_proj(x)  # only change feature size

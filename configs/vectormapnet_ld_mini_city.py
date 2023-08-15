@@ -21,7 +21,7 @@ class2label = {
     "road_boundary": 3,
     "stop_line": 4,
     "shadow_area": 5,
-    'others': -1,
+    # 'others': -1,
     # 'centerline': 3,
 }
 

@@ -43,27 +43,27 @@ class LDDatasetMini(Dataset):
                  ),
                  **kwargs,
                  ):
-        super().__init__(        )
-        
+        super().__init__()
+
         self.modality = modality
         self.pipeline = Compose(pipeline) if pipeline is not None else None
         self.cat2id = cat2id
         self.interval = interval
-        
+
         self.roi_size = roi_size
         self.coord_dim = coord_dim
         self.eval_cfg = eval_cfg
-        
+
         # lidar files
         lidar_folder_path = osp.join(data_root)
         self.samples = []
         for file in os.listdir(lidar_folder_path):
             self.samples.append(osp.join(lidar_folder_path, file))
-            
+
         with open(ann_file, "rb") as f:
             import pickle
             self.map_infos = pickle.load(f)
-            
+
         self.data_num = min(len(self.samples), len(self.map_infos))
         self.samples = self.samples[:self.data_num]
         self.map_infos = self.map_infos[:self.data_num]
@@ -72,19 +72,18 @@ class LDDatasetMini(Dataset):
         self.flag = np.zeros(len(self), dtype=np.uint8)
         # self.map_extractor = NuscMapExtractor(data_root, self.roi_size)
         self.work_dir = work_dir
-        
 
     def get_sample(self, idx):
         lidar_bin_file = self.samples[idx]
         map_info = self.map_infos[idx]
-        
+
         points = self._load_points(lidar_bin_file).reshape(-1, 4)
-        
+
         input_dict = dict(
-            points = BasePoints(points, 4),
-            map_info = map_info
+            points=BasePoints(points, 4),
+            map_info=map_info
         )
-        
+
         return input_dict
 
     def prepare_data(self, index):
@@ -99,8 +98,7 @@ class LDDatasetMini(Dataset):
         input_dict = self.get_sample(index)
         example = self.pipeline(input_dict)
         return example
-    
-    
+
     def format_results(self, results, name, prefix=None, patch_size=(60, 30), origin=(0, 0)):
 
         meta = self.modality
@@ -145,7 +143,7 @@ class LDDatasetMini(Dataset):
                 vector_lines = []
                 for i in range(case['groundTruth']['nline']):
                     line = case['groundTruth']['lines'][i] * \
-                        patch_size + origin
+                           patch_size + origin
 
                     vector_lines.append({
                         'pts': line,
@@ -164,7 +162,6 @@ class LDDatasetMini(Dataset):
         mmcv.dump(submissions, res_path)
 
         return res_path
-
 
     def evaluate(self,
                  results,
@@ -200,8 +197,7 @@ class LDDatasetMini(Dataset):
         print(result_dict)
 
         return result_dict
-    
-    
+
     def __len__(self):
         """Return the length of data infos.
 
@@ -209,7 +205,7 @@ class LDDatasetMini(Dataset):
             int: Length of data infos.
         """
         return self.data_num
-        
+
     def _rand_another(self, idx):
         """Randomly get another item.
 
@@ -217,8 +213,7 @@ class LDDatasetMini(Dataset):
             int: Another index of item.
         """
         return np.random.choice(self.__len__)
-    
-    
+
     def _load_points(self, pts_filename: str):
         """Private function to load point clouds data.
 

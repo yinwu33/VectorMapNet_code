@@ -11,6 +11,7 @@ from mmdet.models import HEADS
 from .detr_bbox import DETRBboxHead
 from mmdet.models.utils.transformer import inverse_sigmoid
 
+
 @HEADS.register_module(force=True)
 class MapElementDetector(DETRBboxHead):
 
@@ -26,16 +27,16 @@ class MapElementDetector(DETRBboxHead):
 
         # query_pos_embed & query_embed
         self.query_embedding = nn.Embedding(self.num_query,
-                                            self.embed_dims*2)
-        
-        # for bbox parameter xstart, ystart, xend, yend
-        self.bbox_embedding = nn.Embedding( self.bbox_size, 
-                                            self.embed_dims*2)
+                                            self.embed_dims * 2)
 
-    def _init_branch(self,):
+        # for bbox parameter xstart, ystart, xend, yend
+        self.bbox_embedding = nn.Embedding(self.bbox_size,
+                                           self.embed_dims * 2)
+
+    def _init_branch(self, ):
         """Initialize classification branch and regression branch of head."""
 
-        fc_cls = Linear(self.embed_dims*self.bbox_size, self.cls_out_channels)
+        fc_cls = Linear(self.embed_dims * self.bbox_size, self.cls_out_channels)
         # fc_cls = Linear(self.embed_dims, self.cls_out_channels)
 
         reg_branch = []
@@ -46,12 +47,13 @@ class MapElementDetector(DETRBboxHead):
 
         if self.discrete_output:
             reg_branch.append(nn.Linear(
-                self.embed_dims, max(self.canvas_size), bias=True,))
+                self.embed_dims, max(self.canvas_size), bias=True, ))
         else:
             reg_branch.append(nn.Linear(
-                self.embed_dims, self.coord_dim, bias=True,))
+                self.embed_dims, self.coord_dim, bias=True, ))
 
         reg_branch = nn.Sequential(*reg_branch)
+
         # add sigmoid or not
 
         def _get_clones(module, N):
@@ -124,29 +126,29 @@ class MapElementDetector(DETRBboxHead):
                     [nb_dec, bs, num_query, num_points, 2].
         '''
 
-        (global_context_embedding, sequential_context_embeddings) =\
+        (global_context_embedding, sequential_context_embeddings) = \
             self._prepare_context(batch, context)
 
         x = sequential_context_embeddings
         B, C, H, W = x.shape
 
-        query_embedding = self.query_embedding.weight[None,:,None].repeat(B, 1, self.bbox_size, 1)
+        query_embedding = self.query_embedding.weight[None, :, None].repeat(B, 1, self.bbox_size, 1)
         bbox_embed = self.bbox_embedding.weight
-        query_embedding = query_embedding + bbox_embed[None,None]
-        query_embedding = query_embedding.view(B, -1, C*2)
+        query_embedding = query_embedding + bbox_embed[None, None]
+        query_embedding = query_embedding.view(B, -1, C * 2)
 
         img_masks = x.new_zeros((B, H, W))
         pos_embed = self.positional_encoding(img_masks)
 
         # outs_dec: [nb_dec, bs, num_query, embed_dim]
         hs, init_reference, inter_references = self.transformer(
-                    [x,],
-                    [img_masks.type(torch.bool)],
-                    query_embedding,
-                    [pos_embed],
-                    reg_branches= self.reg_branches if self.iterative else None,  # noqa:E501
-                    cls_branches= None,  # noqa:E501
-            )
+            [x, ],
+            [img_masks.type(torch.bool)],
+            query_embedding,
+            [pos_embed],
+            reg_branches=self.reg_branches if self.iterative else None,  # noqa:E501
+            cls_branches=None,  # noqa:E501
+        )
         outs_dec = hs.permute(0, 2, 1, 3)
 
         outputs = []
@@ -155,23 +157,23 @@ class MapElementDetector(DETRBboxHead):
                 reference = init_reference
             else:
                 reference = inter_references[i - 1]
-            outputs.append(self.get_prediction(i,query_feat,reference))
+            outputs.append(self.get_prediction(i, query_feat, reference))
 
         return outputs
 
     def get_prediction(self, level, query_feat, reference):
 
         bs, num_query, h = query_feat.shape
-        query_feat = query_feat.view(bs, -1, self.bbox_size,h)
+        query_feat = query_feat.view(bs, -1, self.bbox_size, h)
 
         ocls = self.pre_branches['cls'][level](query_feat.flatten(-2))
         # ocls = ocls.mean(-2)
         reference = inverse_sigmoid(reference)
-        reference = reference.view(bs, -1, self.bbox_size,self.coord_dim)
+        reference = reference.view(bs, -1, self.bbox_size, self.coord_dim)
 
         tmp = self.pre_branches['reg'][level](query_feat)
-        tmp[...,:self.kp_coord_dim] =  tmp[...,:self.kp_coord_dim] + reference[...,:self.kp_coord_dim]
-        lines = tmp.sigmoid() # bs, num_query, self.bbox_size,2
+        tmp[..., :self.kp_coord_dim] = tmp[..., :self.kp_coord_dim] + reference[..., :self.kp_coord_dim]
+        lines = tmp.sigmoid()  # bs, num_query, self.bbox_size,2
 
         lines = lines * self.canvas_size[:self.coord_dim]
         lines = lines.flatten(-2)
@@ -179,5 +181,5 @@ class MapElementDetector(DETRBboxHead):
         return dict(
             lines=lines,  # [bs, num_query, bboxsize*2]
             scores=ocls,  # [bs, num_query, num_class]
-            embeddings= query_feat, # [bs, num_query, bbox_size, h]
+            embeddings=query_feat,  # [bs, num_query, bbox_size, h]
         )

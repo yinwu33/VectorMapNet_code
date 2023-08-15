@@ -106,12 +106,12 @@ class VectorMapNetLD(BaseMapper):
             self.last_epoch = [batch, img, img_metas, valid_idx, points]
 
         # Backbone
-        _bev_feats = self.backbone(img, img_metas=img_metas, points=points)
+        _bev_feats = self.backbone(img, img_metas=img_metas, points=points)  # [B, 128, canvas_h, canvas_w]
         img_shape = \
-            [_bev_feats.shape[2:] for i in range(_bev_feats.shape[0])]
+            [_bev_feats.shape[2:] for i in range(_bev_feats.shape[0])]  # [torch.Size([100, 200]), torch.Size([100, 200])]
 
         # Neck
-        bev_feats = self.neck(_bev_feats)
+        bev_feats = self.neck(_bev_feats)  # [B, 128, canvas_h // 4, canvas_w // 4]
         
         preds_dict, losses_dict = \
             self.head(batch, 

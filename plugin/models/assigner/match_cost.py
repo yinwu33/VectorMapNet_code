@@ -1,6 +1,6 @@
 import torch
 from mmdet.core.bbox.match_costs.builder import MATCH_COST
-from mmdet.core.bbox.match_costs import build_match_cost
+from mmdet.core.bbox.match_costs import build_match_cost, FocalLossCost
 
 from mmdet.core.bbox.iou_calculators import bbox_overlaps
 from mmdet.core.bbox.transforms import bbox_cxcywh_to_xyxy, bbox_xyxy_to_cxcywh

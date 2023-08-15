@@ -141,7 +141,7 @@ class DGHead(BaseMapHead):
         if self.joint_training:
             for k in batch['gen'].keys():
                 batch['gen'][k] = \
-                    torch.cat((batch['gen'][k],batch['gen'][k][remain_idx]),dim=0)
+                    torch.cat((batch['gen'][k], batch['gen'][k][remain_idx]),dim=0)
 
         gen_losses_dict = \
             self.loss_gen(batch, outs)

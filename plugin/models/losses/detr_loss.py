@@ -1,7 +1,7 @@
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
-from mmdet.models.losses import l1_loss
+from mmdet.models.losses import l1_loss, FocalLoss
 from mmdet.models.losses.utils import weighted_loss
 import mmcv
 
