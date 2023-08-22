@@ -60,7 +60,7 @@ class VectorizeLocalMapLDCity(object):  # ! customized
         self.process_func = {
             'ped_crossing': self.poly_geoms_to_vectors,
             'solid_lane': self.line_geoms_to_vectors,
-            'dash_lane': self.line_geoms_to_vectors,  # TODO, here was polygon before
+            'dash_lane': self.line_geoms_to_vectors,
             'road_boundary': self.line_geoms_to_vectors,
             'stop_line': self.line_geoms_to_vectors,
             'shadow_area': self.poly_geoms_to_vectors,

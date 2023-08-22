@@ -293,7 +293,7 @@ data = dict(
     ),
     test=dict(
         type='LDDatasetMini',
-        data_root='/home/yinwu/Data/Mapping/lidar',
+        data_root='/home/yinwu/Data/Mapping/lidar_one',
         ann_file='/home/yinwu/Data/Mapping/map_infos.pkl',
         roi_size=roi_size,
         cat2id=class2label,
